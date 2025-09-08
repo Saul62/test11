@@ -91,8 +91,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# 设置中文字体和负号显示
-plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans', 'Arial Unicode MS']
+# 设置中文字体和负号显示（优先使用已加载的中文字体）
+if chinese_font:
+    plt.rcParams['font.sans-serif'] = [chinese_font, 'DejaVu Sans', 'Arial']
+else:
+    plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial']
 plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 # 定义全局变量
@@ -417,23 +420,34 @@ def main():
                             show=False
                         )
 
-                    # 修复瀑布图中的 Unicode 负号（\u2212）为 ASCII 负号（-）
+                    # 修复瀑布图中的 Unicode 负号（\u2212）为 ASCII 负号（-），并强制使用中文字体
                     for ax in fig_waterfall.get_axes():
-                        # 文本对象
+                        # 文本对象（条形标签、注释等）
                         for text in ax.texts:
                             s = text.get_text()
                             if '−' in s:
                                 text.set_text(s.replace('−', '-'))
-                        # y 轴刻度
+                            if chinese_font:
+                                text.set_fontfamily(chinese_font)
+                        # y 轴刻度（特征名称处）
                         for label in ax.get_yticklabels():
                             t = label.get_text()
                             if '−' in t:
                                 label.set_text(t.replace('−', '-'))
-                        # x 轴刻度
+                            if chinese_font:
+                                label.set_fontfamily(chinese_font)
+                        # x 轴刻度（数值刻度）
                         for label in ax.get_xticklabels():
                             t = label.get_text()
                             if '−' in t:
                                 label.set_text(t.replace('−', '-'))
+                            if chinese_font:
+                                label.set_fontfamily(chinese_font)
+                        # 轴标题/图标题
+                        if chinese_font:
+                            ax.set_xlabel(ax.get_xlabel(), fontfamily=chinese_font)
+                            ax.set_ylabel(ax.get_ylabel(), fontfamily=chinese_font)
+                            ax.set_title(ax.get_title(), fontfamily=chinese_font)
 
                     plt.tight_layout()
                     st.pyplot(fig_waterfall)
