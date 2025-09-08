@@ -124,9 +124,9 @@ feature_dict.update({'APTT_.s': 'APTT', 'APTT_.s.': 'APTT'})
 
 # 变量说明字典（9个新特征）
 variable_descriptions = {
-    'icu_admission': '是否再入ICU',  #（0=否，1=是）
-    'Magnesium_group': '镁分组',  #（建议按0/1/2编码）
-    'Hypertension': '是否有高血压',  #（0=无，1=有）
+    'icu_admission': '是否再入ICU（0=否，1=是）',
+    'Magnesium_group': '镁分组（建议按0/1/2编码）',
+    'Hypertension': '是否有高血压（0=无，1=有）',
     'APTT_.s': 'APTT（秒）',
     'APTT_.s.': 'APTT（秒）',
     'Hb': '血红蛋白（g/L 或 g/dL，按模型数据口径）',
@@ -395,13 +395,25 @@ def main():
                     # 创建英文特征名（兜底）
                     english_names = [f for f in current_features]
 
+                    # 将类别/二值特征的取值映射为中文显示（用于左侧标签的“值 = 特征名”）
+                    display_data = input_df.iloc[0].copy()
+                    try:
+                        if 'icu_admission' in display_data.index:
+                            display_data['icu_admission'] = {0: '否', 1: '是'}.get(int(display_data['icu_admission']), display_data['icu_admission'])
+                        if 'Hypertension' in display_data.index:
+                            display_data['Hypertension'] = {0: '无', 1: '有'}.get(int(display_data['Hypertension']), display_data['Hypertension'])
+                        if 'Magnesium_group' in display_data.index:
+                            display_data['Magnesium_group'] = {0: '低', 1: '中', 2: '高'}.get(int(display_data['Magnesium_group']), display_data['Magnesium_group'])
+                    except Exception:
+                        pass
+
                     # 尝试使用中文特征名，如果失败则使用英文
                     try:
                         shap.waterfall_plot(
                             shap.Explanation(
                                 values=shap_value,
                                 base_values=expected_value,
-                                data=input_df.iloc[0].values,
+                                data=display_data.values,
                                 feature_names=[feature_dict.get(f, f) for f in current_features]
                             ),
                             max_display=len(current_features),
@@ -413,7 +425,7 @@ def main():
                             shap.Explanation(
                                 values=shap_value,
                                 base_values=expected_value,
-                                data=input_df.iloc[0].values,
+                                data=display_data.values,
                                 feature_names=english_names
                             ),
                             max_display=len(current_features),
