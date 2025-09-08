@@ -225,7 +225,9 @@ def main():
         k = st.number_input("钾（mmol/L）", value=4.0, step=0.1, min_value=1.5, max_value=8.0)
 
     with col2:
-        magnesium_group_label = st.selectbox("镁分组", options=[0, 1, 2], format_func=lambda x: {0: "低", 1: "中", 2: "高"}.get(x, str(x)), index=1)
+        # 镁分组：按用户要求显示区间标签，但内部编码使用 1/2/3
+        mg_label_map = {1: '1.7-2', 2: '≤1.7', 3: '>2'}
+        magnesium_group_label = st.selectbox("镁分组", options=[1, 2, 3], format_func=lambda x: mg_label_map.get(x, str(x)), index=0)
         aptt = st.number_input("APTT（秒）", value=30.0, step=0.1, min_value=10.0, max_value=100.0)
         bun = st.number_input("血尿素氮", value=5.0, step=0.1)
 
@@ -403,7 +405,7 @@ def main():
                         if 'Hypertension' in display_data.index:
                             display_data['Hypertension'] = {0: '无', 1: '有'}.get(int(display_data['Hypertension']), display_data['Hypertension'])
                         if 'Magnesium_group' in display_data.index:
-                            display_data['Magnesium_group'] = {0: '低', 1: '中', 2: '高'}.get(int(display_data['Magnesium_group']), display_data['Magnesium_group'])
+                            display_data['Magnesium_group'] = {1: '1.7-2', 2: '≤1.7', 3: '>2'}.get(int(display_data['Magnesium_group']), display_data['Magnesium_group'])
                     except Exception:
                         pass
 
@@ -478,10 +480,22 @@ def main():
                     matplotlib.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial', 'Liberation Sans']
                     matplotlib.rcParams['axes.unicode_minus'] = False
 
+                    # 力图也使用映射后的显示数据，避免出现 0/1 等数值
+                    display_data_fp = input_df.iloc[0].copy()
+                    try:
+                        if 'icu_admission' in display_data_fp.index:
+                            display_data_fp['icu_admission'] = {0: '否', 1: '是'}.get(int(display_data_fp['icu_admission']), display_data_fp['icu_admission'])
+                        if 'Hypertension' in display_data_fp.index:
+                            display_data_fp['Hypertension'] = {0: '无', 1: '有'}.get(int(display_data_fp['Hypertension']), display_data_fp['Hypertension'])
+                        if 'Magnesium_group' in display_data_fp.index:
+                            display_data_fp['Magnesium_group'] = {1: '1.7-2', 2: '≤1.7', 3: '>2'}.get(int(display_data_fp['Magnesium_group']), display_data_fp['Magnesium_group'])
+                    except Exception:
+                        pass
+
                     force_plot = shap.force_plot(
                         expected_value,
                         shap_value,
-                        input_df.iloc[0],
+                        display_data_fp,
                         feature_names=[feature_dict.get(f, f) for f in current_features]
                     )
 
