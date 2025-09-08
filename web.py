@@ -124,9 +124,9 @@ feature_dict.update({'APTT_.s': 'APTT', 'APTT_.s.': 'APTT'})
 
 # 变量说明字典（9个新特征）
 variable_descriptions = {
-    'icu_admission': '是否再入ICU（0=否，1=是）',
-    'Magnesium_group': '镁分组（建议按0/1/2编码）',
-    'Hypertension': '是否有高血压（0=无，1=有）',
+    'icu_admission': '是否再入ICU',  #（0=否，1=是）
+    'Magnesium_group': '镁分组',  #（建议按0/1/2编码）
+    'Hypertension': '是否有高血压',  #（0=无，1=有）
     'APTT_.s': 'APTT（秒）',
     'APTT_.s.': 'APTT（秒）',
     'Hb': '血红蛋白（g/L 或 g/dL，按模型数据口径）',
