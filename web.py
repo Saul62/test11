@@ -446,6 +446,36 @@ def main():
                             show=False
                         )
 
+                    # 统一将 f(x) 与 E[f(x)] 文本改为“概率”显示
+                    from matplotlib.ticker import FuncFormatter
+                    def _sigmoid(x):
+                        return 1.0 / (1.0 + np.exp(-x))
+                    if prob_space:
+                        fx_prob = float(expected_value + np.sum(shap_value))  # 在概率空间，shap 和 base 都是概率增量
+                        efx_prob = float(expected_value)
+                        # 保险：限制在 [0,1]
+                        fx_prob = float(np.clip(fx_prob, 0.0, 1.0))
+                        efx_prob = float(np.clip(efx_prob, 0.0, 1.0))
+                    else:
+                        fx_raw = float(expected_value + np.sum(shap_value))
+                        fx_prob = _sigmoid(fx_raw)
+                        efx_prob = _sigmoid(float(expected_value))
+
+                    ax = plt.gca()
+                    # 替换 f(x) 与 E[f(x)] 标签文本
+                    for txt in ax.texts:
+                        s = txt.get_text()
+                        if "f(x)" in s and ":" not in s:
+                            # 将例如 "f(x) = 0.892" 改为 概率文本
+                            if "E[f(x)]" not in s:
+                                txt.set_text(f"f(x) = {fx_prob:.3f} (概率)")
+                        if "E[f(x)]" in s:
+                            txt.set_text(f"E[f(x)] = {efx_prob:.3f} (概率)")
+
+                    # 概率空间时，将横轴格式化为百分比，视觉上更直观
+                    if prob_space:
+                        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: f"{x:.0%}" if 0.0 <= x <= 1.0 else f"{x:.2f}"))
+
                     # 修复瀑布图中的 Unicode 负号（\u2212）为 ASCII 负号（-），并强制使用中文字体
                     for ax in fig_waterfall.get_axes():
                         # 文本对象（条形标签、注释等）
