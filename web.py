@@ -340,9 +340,21 @@ def main():
             st.subheader("模型解释（SHAP）")
             # ===== SHAP 解释开始 =====
             try:
-                # 直接在概率空间输出（确保 f(x) 与 E[f(x)] 为概率而非原始分数）
-                explainer = shap.TreeExplainer(model, model_output="probability")
-                shap_values = explainer.shap_values(input_df)
+                # 期望在概率空间输出
+                prob_space = True
+                try:
+                    # 使用 interventional 以支持 model_output="probability"
+                    explainer = shap.TreeExplainer(
+                        model,
+                        model_output="probability",
+                        feature_perturbation="interventional"
+                    )
+                    shap_values = explainer.shap_values(input_df)
+                except Exception:
+                    # 回退到原始空间（log-odds/raw），后续我们会单独标注概率值
+                    explainer = shap.TreeExplainer(model)
+                    shap_values = explainer.shap_values(input_df)
+                    prob_space = False
 
                 # 处理SHAP值格式（兼容二分类的不同返回形式）
                 if isinstance(shap_values, np.ndarray) and len(shap_values.shape) == 3:
@@ -469,6 +481,21 @@ def main():
 
                 except Exception as e:
                     st.error(f"无法生成瀑布图: {str(e)}")
+
+                # 若回退为 raw 空间，则在图上额外注释概率，满足“f(x) 直接显示概率”的需求
+                if not prob_space:
+                    def sigmoid(x):
+                        return 1.0 / (1.0 + np.exp(-x))
+                    fx_raw = float(expected_value + np.sum(shap_value))
+                    fx_prob = sigmoid(fx_raw)
+                    efx_prob = sigmoid(float(expected_value))
+                    ax = fig_waterfall.gca()
+                    # 右上角标注概率版 f(x)
+                    ax.text(1.02, 1.02, f"f(x) 概率 = {fx_prob:.3f}", transform=ax.transAxes,
+                            ha='left', va='bottom', fontsize=12, color='black')
+                    # 左下角标注 E[f(x)] 概率
+                    ax.text(0.0, -0.08, f"E[f(x)] 概率 = {efx_prob:.3f}", transform=ax.transAxes,
+                            ha='left', va='top', fontsize=11, color='dimgray')
 
                 # SHAP力图
                 st.subheader("SHAP力图")
