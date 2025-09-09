@@ -340,21 +340,9 @@ def main():
             st.subheader("模型解释（SHAP）")
             # ===== SHAP 解释开始 =====
             try:
-                # 期望在概率空间输出
-                prob_space = True
-                try:
-                    # 使用 interventional 以支持 model_output="probability"
-                    explainer = shap.TreeExplainer(
-                        model,
-                        model_output="probability",
-                        feature_perturbation="interventional"
-                    )
-                    shap_values = explainer.shap_values(input_df)
-                except Exception:
-                    # 回退到原始空间（log-odds/raw），后续我们会单独标注概率值
-                    explainer = shap.TreeExplainer(model)
-                    shap_values = explainer.shap_values(input_df)
-                    prob_space = False
+                # 创建SHAP解释器
+                explainer = shap.TreeExplainer(model)
+                shap_values = explainer.shap_values(input_df)
 
                 # 处理SHAP值格式（兼容二分类的不同返回形式）
                 if isinstance(shap_values, np.ndarray) and len(shap_values.shape) == 3:
@@ -446,29 +434,6 @@ def main():
                             show=False
                         )
 
-                    # 清理 SHAP 内置的 f(x)/E[f(x)] 文本（兼容多种写法），避免重复
-                    for ax_ in fig_waterfall.get_axes():
-                        for txt in list(ax_.texts):
-                            s = str(txt.get_text()).replace(' ', '')
-                            if 'f(x)' in s or 'f(x)=' in s or 'E[f(x)]' in s or 'E[f(X)]' in s or 'Ef(x)' in s or 'E[f(x)]=' in s:
-                                txt.set_visible(False)
-
-                    # 在所有坐标轴上统一覆盖显示 f(x) 与 E[f(x)] 概率，避免有的轴被遗漏
-                    for ax_ in fig_waterfall.get_axes():
-                        ax_.text(1.02, 1.02, f"f(x) = {fx_prob:.3f} (概率)", transform=ax_.transAxes,
-                                 ha='left', va='bottom', fontsize=12, color='black')
-                        ax_.set_xlabel(f"E[f(x)] = {efx_prob:.3f} (概率)")
-
-                    # 统一让横轴显示为“百分比”
-                    if prob_space:
-                        formatter = FuncFormatter(lambda x, pos: f"{x:.0%}" if 0.0 <= x <= 1.0 else f"{x:.2f}")
-                    else:
-                        formatter = FuncFormatter(lambda x, pos: f"{_sigmoid(x):.0%}")
-                    for ax_ in fig_waterfall.get_axes():
-                        ax_.xaxis.set_major_formatter(formatter)
-                        # 触发布局与刻度刷新，确保替换生效
-                        ax_.figure.canvas.draw_idle() if hasattr(ax_.figure.canvas, 'draw_idle') else None
-
                     # 修复瀑布图中的 Unicode 负号（\u2212）为 ASCII 负号（-），并强制使用中文字体
                     for ax in fig_waterfall.get_axes():
                         # 文本对象（条形标签、注释等）
@@ -504,25 +469,6 @@ def main():
 
                 except Exception as e:
                     st.error(f"无法生成瀑布图: {str(e)}")
-
-                # 预先计算用于显示的概率版 f(x) 与 E[f(x)]，避免未定义错误
-                from matplotlib.ticker import FuncFormatter
-                def _sigmoid(x: float) -> float:
-                    return 1.0 / (1.0 + np.exp(-x))
-
-                try:
-                    if prob_space:
-                        # 概率空间：base 与 shap 为概率增量
-                        fx_prob = float(np.clip(float(expected_value) + float(np.sum(shap_value)), 0.0, 1.0))
-                        efx_prob = float(np.clip(float(expected_value), 0.0, 1.0))
-                    else:
-                        # raw 空间：先求 raw，再做 Sigmoid
-                        fx_raw_tmp = float(expected_value) + float(np.sum(shap_value))
-                        fx_prob = _sigmoid(fx_raw_tmp)
-                        efx_prob = _sigmoid(float(expected_value))
-                except Exception:
-                    # 兜底，防止任何异常导致未定义
-                    fx_prob, efx_prob = float('nan'), float('nan')
 
                 # SHAP力图
                 st.subheader("SHAP力图")
