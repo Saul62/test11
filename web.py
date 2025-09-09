@@ -505,20 +505,24 @@ def main():
                 except Exception as e:
                     st.error(f"无法生成瀑布图: {str(e)}")
 
-                # 若回退为 raw 空间，则在图上额外注释概率，满足“f(x) 直接显示概率”的需求
-                if not prob_space:
-                    def sigmoid(x):
-                        return 1.0 / (1.0 + np.exp(-x))
-                    fx_raw = float(expected_value + np.sum(shap_value))
-                    fx_prob = sigmoid(fx_raw)
-                    efx_prob = sigmoid(float(expected_value))
-                    main_ax = fig_waterfall.gca()
-                    # 右上角标注概率版 f(x)
-                    main_ax.text(1.02, 1.02, f"f(x) 概率 = {fx_prob:.3f}", transform=main_ax.transAxes,
-                            ha='left', va='bottom', fontsize=12, color='black')
-                    # 左下角标注 E[f(x)] 概率
-                    main_ax.text(0.0, -0.08, f"E[f(x)] 概率 = {efx_prob:.3f}", transform=main_ax.transAxes,
-                            ha='left', va='top', fontsize=11, color='dimgray')
+                # 预先计算用于显示的概率版 f(x) 与 E[f(x)]，避免未定义错误
+                from matplotlib.ticker import FuncFormatter
+                def _sigmoid(x: float) -> float:
+                    return 1.0 / (1.0 + np.exp(-x))
+
+                try:
+                    if prob_space:
+                        # 概率空间：base 与 shap 为概率增量
+                        fx_prob = float(np.clip(float(expected_value) + float(np.sum(shap_value)), 0.0, 1.0))
+                        efx_prob = float(np.clip(float(expected_value), 0.0, 1.0))
+                    else:
+                        # raw 空间：先求 raw，再做 Sigmoid
+                        fx_raw_tmp = float(expected_value) + float(np.sum(shap_value))
+                        fx_prob = _sigmoid(fx_raw_tmp)
+                        efx_prob = _sigmoid(float(expected_value))
+                except Exception:
+                    # 兜底，防止任何异常导致未定义
+                    fx_prob, efx_prob = float('nan'), float('nan')
 
                 # SHAP力图
                 st.subheader("SHAP力图")
