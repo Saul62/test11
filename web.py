@@ -472,9 +472,16 @@ def main():
                         if "E[f(x)]" in s:
                             txt.set_text(f"E[f(x)] = {efx_prob:.3f} (概率)")
 
-                    # 概率空间时，将横轴格式化为百分比，视觉上更直观
+                    # 统一让横轴显示为“百分比”
                     if prob_space:
+                        # 概率空间：直接按百分比显示
                         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: f"{x:.0%}" if 0.0 <= x <= 1.0 else f"{x:.2f}"))
+                    else:
+                        # raw 空间：对刻度值做 Sigmoid 映射，并把标签改为百分比
+                        ticks = ax.get_xticks()
+                        tick_labels = [f"{_sigmoid(t):.0%}" for t in ticks]
+                        ax.set_xticks(ticks)
+                        ax.set_xticklabels(tick_labels)
 
                     # 修复瀑布图中的 Unicode 负号（\u2212）为 ASCII 负号（-），并强制使用中文字体
                     for ax in fig_waterfall.get_axes():
