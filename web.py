@@ -340,8 +340,8 @@ def main():
             st.subheader("模型解释（SHAP）")
             # ===== SHAP 解释开始 =====
             try:
-                # 创建SHAP解释器
-                explainer = shap.TreeExplainer(model)
+                # 直接在概率空间输出（确保 f(x) 与 E[f(x)] 为概率而非原始分数）
+                explainer = shap.TreeExplainer(model, model_output="probability")
                 shap_values = explainer.shap_values(input_df)
 
                 # 处理SHAP值格式（兼容二分类的不同返回形式）
