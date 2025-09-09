@@ -446,42 +446,28 @@ def main():
                             show=False
                         )
 
-                    # 统一将 f(x) 与 E[f(x)] 文本改为“概率”显示
-                    from matplotlib.ticker import FuncFormatter
-                    def _sigmoid(x):
-                        return 1.0 / (1.0 + np.exp(-x))
-                    if prob_space:
-                        fx_prob = float(expected_value + np.sum(shap_value))  # 在概率空间，shap 和 base 都是概率增量
-                        efx_prob = float(expected_value)
-                        # 保险：限制在 [0,1]
-                        fx_prob = float(np.clip(fx_prob, 0.0, 1.0))
-                        efx_prob = float(np.clip(efx_prob, 0.0, 1.0))
-                    else:
-                        fx_raw = float(expected_value + np.sum(shap_value))
-                        fx_prob = _sigmoid(fx_raw)
-                        efx_prob = _sigmoid(float(expected_value))
+                    # 清理 SHAP 内置的 f(x)/E[f(x)] 文本（兼容多种写法），避免重复
+                    for ax_ in fig_waterfall.get_axes():
+                        for txt in list(ax_.texts):
+                            s = str(txt.get_text()).replace(' ', '')
+                            if 'f(x)' in s or 'f(x)=' in s or 'E[f(x)]' in s or 'E[f(X)]' in s or 'Ef(x)' in s or 'E[f(x)]=' in s:
+                                txt.set_visible(False)
 
-                    ax = plt.gca()
-                    # 替换 f(x) 与 E[f(x)] 标签文本
-                    for txt in ax.texts:
-                        s = txt.get_text()
-                        if "f(x)" in s and ":" not in s:
-                            # 将例如 "f(x) = 0.892" 改为 概率文本
-                            if "E[f(x)]" not in s:
-                                txt.set_text(f"f(x) = {fx_prob:.3f} (概率)")
-                        if "E[f(x)]" in s:
-                            txt.set_text(f"E[f(x)] = {efx_prob:.3f} (概率)")
+                    # 在所有坐标轴上统一覆盖显示 f(x) 与 E[f(x)] 概率，避免有的轴被遗漏
+                    for ax_ in fig_waterfall.get_axes():
+                        ax_.text(1.02, 1.02, f"f(x) = {fx_prob:.3f} (概率)", transform=ax_.transAxes,
+                                 ha='left', va='bottom', fontsize=12, color='black')
+                        ax_.set_xlabel(f"E[f(x)] = {efx_prob:.3f} (概率)")
 
                     # 统一让横轴显示为“百分比”
                     if prob_space:
-                        # 概率空间：直接按百分比显示
-                        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: f"{x:.0%}" if 0.0 <= x <= 1.0 else f"{x:.2f}"))
+                        formatter = FuncFormatter(lambda x, pos: f"{x:.0%}" if 0.0 <= x <= 1.0 else f"{x:.2f}")
                     else:
-                        # raw 空间：对刻度值做 Sigmoid 映射，并把标签改为百分比
-                        ticks = ax.get_xticks()
-                        tick_labels = [f"{_sigmoid(t):.0%}" for t in ticks]
-                        ax.set_xticks(ticks)
-                        ax.set_xticklabels(tick_labels)
+                        formatter = FuncFormatter(lambda x, pos: f"{_sigmoid(x):.0%}")
+                    for ax_ in fig_waterfall.get_axes():
+                        ax_.xaxis.set_major_formatter(formatter)
+                        # 触发布局与刻度刷新，确保替换生效
+                        ax_.figure.canvas.draw_idle() if hasattr(ax_.figure.canvas, 'draw_idle') else None
 
                     # 修复瀑布图中的 Unicode 负号（\u2212）为 ASCII 负号（-），并强制使用中文字体
                     for ax in fig_waterfall.get_axes():
@@ -526,12 +512,12 @@ def main():
                     fx_raw = float(expected_value + np.sum(shap_value))
                     fx_prob = sigmoid(fx_raw)
                     efx_prob = sigmoid(float(expected_value))
-                    ax = fig_waterfall.gca()
+                    main_ax = fig_waterfall.gca()
                     # 右上角标注概率版 f(x)
-                    ax.text(1.02, 1.02, f"f(x) 概率 = {fx_prob:.3f}", transform=ax.transAxes,
+                    main_ax.text(1.02, 1.02, f"f(x) 概率 = {fx_prob:.3f}", transform=main_ax.transAxes,
                             ha='left', va='bottom', fontsize=12, color='black')
                     # 左下角标注 E[f(x)] 概率
-                    ax.text(0.0, -0.08, f"E[f(x)] 概率 = {efx_prob:.3f}", transform=ax.transAxes,
+                    main_ax.text(0.0, -0.08, f"E[f(x)] 概率 = {efx_prob:.3f}", transform=main_ax.transAxes,
                             ha='left', va='top', fontsize=11, color='dimgray')
 
                 # SHAP力图
