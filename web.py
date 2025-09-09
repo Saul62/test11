@@ -8,16 +8,13 @@ import matplotlib
 import shap
 import warnings
 
-# 忽略不必要的警告
 warnings.filterwarnings('ignore', category=UserWarning)
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
-# 修复NumPy bool弃用问题
 if not hasattr(np, 'bool'):
     np.bool = bool
 
-# 全局设置matplotlib字体，确保负号正常显示
 def setup_chinese_font():
     """设置中文字体（云端优先加载本地fonts目录内的CJK字体）"""
     try:
@@ -80,28 +77,26 @@ def setup_chinese_font():
         matplotlib.rcParams['font.family'] = 'sans-serif'
         return None
 
-# 设置字体和负号显示
 chinese_font = setup_chinese_font()
 matplotlib.rcParams['axes.unicode_minus'] = False
 
-# 设置页面标题和布局（更新为AKI风险计算器）
 st.set_page_config(
     page_title="基于XGBoost算法预测肺移植术后AKI风险的网页计算器",
     page_icon="🏥",
     layout="wide"
 )
 
-# 设置中文字体和负号显示（优先使用已加载的中文字体）
+
 if chinese_font:
     plt.rcParams['font.sans-serif'] = [chinese_font, 'DejaVu Sans', 'Arial']
 else:
     plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial']
-plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
+plt.rcParams['axes.unicode_minus'] = False 
 
-# 定义全局变量
+
 global feature_names_display, feature_dict, variable_descriptions
 
-# 新特征集合（9个）及其中英文映射
+
 feature_names_display = [
     'icu_admission',      # 再入ICU（0/1）
     'Magnesium_group',    # 镁分组（类别编码）
@@ -136,23 +131,19 @@ variable_descriptions = {
     'Magnesium_CV': '镁变异系数（% 或比例，按模型数据口径）'
 }
 
-# 加载XGBoost模型（仅从给定pkl）
 @st.cache_resource
 def load_model(model_path: str = './xgb_model.pkl'):
     try:
-        # 兼容pickle或joblib保存
         try:
             model = joblib.load(model_path)
         except Exception:
             with open(model_path, 'rb') as f:
                 model = pickle.load(f)
 
-        # 尝试读取模型内置的特征名（如果有）
         model_feature_names = None
         if hasattr(model, 'feature_names_in_'):
             model_feature_names = list(model.feature_names_in_)
         else:
-            # xgboost原生Booster可能存有特征名
             try:
                 booster = getattr(model, 'get_booster', lambda: None)()
                 if booster is not None:
@@ -164,7 +155,7 @@ def load_model(model_path: str = './xgb_model.pkl'):
     except Exception as e:
         raise RuntimeError(f"无法加载模型: {e}")
 
-# 主应用
+
 def main():
     global feature_names_display, feature_dict, variable_descriptions
 
@@ -212,7 +203,6 @@ def main():
         st.sidebar.error(f"模型加载失败: {e}")
         return
 
-    # 仅保留本例可视化，不加载全局CSV
 
     # 单页面输入区域
     st.header("患者指标录入")
